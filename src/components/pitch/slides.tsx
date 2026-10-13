@@ -37,11 +37,11 @@ import { Rich } from "@/components/rich";
 import { Photo } from "@/components/photo";
 import { LogoMark } from "@/components/logo";
 import { photos } from "@/data/images";
-import { sources, projections } from "@/data/market";
+import { sources, plan12, plan12Total, raise, unit } from "@/data/market";
 import { site } from "@/data/site";
 import { cn } from "@/lib/cn";
-import { fmtCompact } from "@/lib/format";
-import { FundsBars, MarketCircles, RevenueChart, VisitorsChart } from "./charts";
+import { fmtCompact, fmtNum, fmtUsd } from "@/lib/format";
+import { FundsBars, MarketCircles, RevenueCostChart, VisitorsChart } from "./charts";
 
 const ease = [0.2, 0.7, 0.2, 1] as const;
 
@@ -117,6 +117,15 @@ function IconBadge({ icon: Icon, className }: { icon: typeof Rocket; className?:
 
 type SlideProps = { n: number; total: number };
 
+const initialsOf = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
 /* ------------------------------------------------------------------ */
 /*  Slides                                                             */
 /* ------------------------------------------------------------------ */
@@ -154,6 +163,22 @@ export function CoverSlide({ n, total }: SlideProps) {
           >
             <Rich text={c.tagline} />
           </motion.p>
+          {site.founders[0] && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.3, ease }}
+              className="mt-6 flex items-center gap-3"
+            >
+              <span className="grid size-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffc285] via-[#ff8a2b] to-[#e8480a] text-[14px] font-extrabold text-white shadow-lg shadow-orange-500/30">
+                {initialsOf(site.founders[0])}
+              </span>
+              <div className="leading-tight">
+                <div className="text-[16px] font-extrabold text-ink @3xl:text-[18px]">{site.founders[0]}</div>
+                <div className="text-[12px] font-bold text-brand-ink @3xl:text-[13px]">{t.pitch.team.members[0].role}</div>
+              </div>
+            </motion.div>
+          )}
         </div>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.35, ease }} className="flex flex-wrap items-center gap-3">
           <span className="btn btn-primary h-11 px-5 text-[14px]">
@@ -339,12 +364,12 @@ export function MarketSlide({ n, total }: SlideProps) {
   const rows = [
     { tag: "TAM", value: usd(1.2e12), text: m.tam, src: "Phocuswright", dot: "bg-brand-soft ring-1 ring-brand/30" },
     { tag: "SAM", value: `≈ ${usd(10e9)}`, text: m.sam, src: "WTTC · Tourism Committee", dot: "bg-brand-3" },
-    { tag: "SOM", value: usd(83.2e6), text: m.som, src: "Travely 2030", dot: "bg-brand" },
+    { tag: "SOM", value: usd(plan12Total.gbv), text: m.som, src: "Travely · 12 months", dot: "bg-brand" },
   ];
   return (
     <SlideShell n={n} total={total} eyebrow={m.eyebrow} title={m.title}>
       <div className="grid h-full items-center gap-4 @3xl:grid-cols-[0.9fr_1.4fr] @3xl:gap-8">
-        <MarketCircles values={[usd(1.2e12), usd(10e9), usd(83.2e6)]} />
+        <MarketCircles values={[usd(1.2e12), usd(10e9), usd(plan12Total.gbv)]} />
         <div className="space-y-3">
           {rows.map((r) => (
             <div key={r.tag} className="soft flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[1.25rem] px-4 py-3">
@@ -421,7 +446,7 @@ export function BusinessSlide({ n, total }: SlideProps) {
 }
 
 export function UnitSlide({ n, total }: SlideProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const u = t.pitch.unit;
   const hero = u.metrics[3];
   const rest = u.metrics.filter((_, i) => i !== 3);
@@ -444,13 +469,13 @@ export function UnitSlide({ n, total }: SlideProps) {
             <div className="relative mt-1 text-[64px] font-extrabold leading-none tracking-[-0.06em] @3xl:text-[96px]">{hero.value}</div>
             <div className="relative mt-auto space-y-3 pt-6">
               {[
-                { k: "LTV", v: 68, w: 100 },
-                { k: "CAC", v: 12, w: (12 / 68) * 100 },
+                { k: "LTV", v: unit.ltv, w: 100 },
+                { k: "CAC", v: unit.cac, w: (unit.cac / unit.ltv) * 100 },
               ].map((b, i) => (
                 <div key={b.k}>
                   <div className="flex justify-between text-[13px] font-extrabold">
                     <span>{b.k}</span>
-                    <span>${b.v}</span>
+                    <span>{fmtUsd(b.v, locale, b.v % 1 ? 1 : 0)}</span>
                   </div>
                   <div className="mt-1.5 h-3 rounded-full bg-white/20">
                     <motion.div
@@ -666,48 +691,58 @@ export function MoatSlide({ n, total }: SlideProps) {
 export function FinancialsSlide({ n, total }: SlideProps) {
   const { t, locale } = useI18n();
   const f = t.pitch.financials;
-  const money = { format: (v: number) => fmtCompact(v, locale, true) };
-  const num = { format: (v: number) => fmtCompact(v, locale) };
-  const rows: { label: string; get: (p: (typeof projections)[number]) => string; strong?: boolean }[] = [
-    { label: f.mau, get: (p) => num.format(p.mau * 1e6) },
-    { label: f.bookers, get: (p) => num.format(p.bookers * 1e3) },
-    { label: f.gbv, get: (p) => money.format(p.gbv * 1e6) },
-    { label: f.revenue, get: (p) => money.format(p.revenue * 1e6), strong: true },
-    { label: f.ebitda, get: (p) => (p.ebitda < 0 ? "−" : "+") + money.format(Math.abs(p.ebitda) * 1e6) },
+  const usd = (v: number) => fmtUsd(v, locale);
+  const signed = (v: number) => (v > 0 ? "+" : "") + fmtUsd(v, locale);
+  type Row = { users: number; mau: number; bookings: number; gbv: number; revenue: number; costs: number; net: number };
+  const rows: { label: string; get: (p: Row) => string; strong?: boolean }[] = [
+    { label: f.users, get: (p) => fmtCompact(p.users, locale) },
+    { label: f.mau, get: (p) => fmtCompact(p.mau, locale) },
+    { label: f.bookings, get: (p) => fmtNum(p.bookings, locale) },
+    { label: f.gbv, get: (p) => usd(p.gbv) },
+    { label: f.revenue, get: (p) => usd(p.revenue), strong: true },
+    { label: f.costs, get: (p) => usd(p.costs) },
+    { label: f.net, get: (p) => signed(p.net) },
+  ];
+  const cols: (Row & { key: string; head: string; sub?: string; total?: boolean })[] = [
+    ...plan12.map((p) => ({ ...p, key: p.q, head: p.q, sub: `${f.period} ${p.months}` })),
+    { ...plan12Total, key: "total", head: f.total, total: true },
   ];
   return (
     <SlideShell n={n} total={total} eyebrow={f.eyebrow} title={f.title}>
       <div className="flex h-full flex-col gap-3">
-        <div className="grid flex-1 gap-4 @3xl:grid-cols-[1fr_1.35fr] @3xl:gap-6">
+        <div className="grid flex-1 gap-4 @3xl:grid-cols-[0.95fr_1.4fr] @3xl:gap-5">
           <Card className="flex flex-col justify-center">
-            <RevenueChart label={f.revenue} />
+            <RevenueCostChart title={f.chartTitle} revenueLabel={f.revenue} costsLabel={f.costs} />
           </Card>
           <div className="soft no-scrollbar overflow-x-auto rounded-[1.5rem] p-2">
-            <table className="w-full min-w-[26rem] border-separate border-spacing-0 text-right">
+            <table className="w-full min-w-[34rem] border-separate border-spacing-0 text-right">
               <thead>
                 <tr>
-                  <th className="px-3 py-2.5 text-left text-[11px] font-extrabold uppercase tracking-wider text-ink-3">{f.year}</th>
-                  {projections.map((p) => (
-                    <th key={p.year} className="px-3 py-2.5 text-[13px] font-extrabold text-ink">
-                      {p.year}
+                  <th className="px-2.5 py-2 text-left" />
+                  {cols.map((c) => (
+                    <th key={c.key} className={cn("px-2.5 py-2 align-bottom", c.total && "rounded-t-xl bg-surface-2")}>
+                      <div className="text-[13px] font-extrabold text-ink @3xl:text-[14px]">{c.head}</div>
+                      {c.sub && <div className="whitespace-nowrap text-[10.5px] font-bold text-ink-3">{c.sub}</div>}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {rows.map((r, ri) => (
                   <tr key={r.label} className={cn(r.strong && "bg-brand-soft")}>
-                    <th className={cn("px-3 py-2.5 text-left text-[12.5px] font-bold @3xl:py-[1.05rem] @3xl:text-[15px]", r.strong ? "rounded-l-xl text-brand-ink" : "text-ink-2")}>{r.label}</th>
-                    {projections.map((p, i) => (
+                    <th className={cn("px-2.5 py-2 text-left text-[12px] font-bold leading-tight @3xl:py-[0.7rem] @3xl:text-[13.5px]", r.strong ? "rounded-l-xl text-brand-ink" : "text-ink-2")}>{r.label}</th>
+                    {cols.map((c, i) => (
                       <td
-                        key={p.year}
+                        key={c.key}
                         className={cn(
-                          "px-3 py-2.5 text-[13px] font-extrabold tabular-nums @3xl:py-[1.05rem] @3xl:text-[17px]",
+                          "whitespace-nowrap px-2.5 py-2 text-[12.5px] font-extrabold tabular-nums @3xl:py-[0.7rem] @3xl:text-[15px]",
                           r.strong ? "text-brand-ink" : "text-ink",
-                          r.strong && i === projections.length - 1 && "rounded-r-xl",
+                          c.total && !r.strong && "bg-surface-2",
+                          c.total && ri === rows.length - 1 && "rounded-b-xl",
+                          r.strong && i === cols.length - 1 && "rounded-r-xl",
                         )}
                       >
-                        {r.get(p)}
+                        {r.get(c)}
                       </td>
                     ))}
                   </tr>
@@ -762,7 +797,7 @@ export function RoadmapSlide({ n, total }: SlideProps) {
 export function TeamSlide({ n, total }: SlideProps) {
   const { t } = useI18n();
   const tm = t.pitch.team;
-  const initials = ["CEO", "CTO", "COO", "CGO"];
+  const initials = [site.founders[0] ? initialsOf(site.founders[0]) : "CEO", "DEV", "SMM", "LOC"];
   return (
     <SlideShell n={n} total={total} eyebrow={tm.eyebrow} title={tm.title}>
       <div className="grid h-full gap-3 @3xl:grid-cols-[1.5fr_1fr] @3xl:gap-4">
@@ -810,7 +845,7 @@ export function TeamSlide({ n, total }: SlideProps) {
 }
 
 export function AskSlide({ n, total }: SlideProps) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const a = t.pitch.ask;
   return (
     <SlideShell n={n} total={total} eyebrow={a.eyebrow} title={a.title}>
@@ -820,7 +855,7 @@ export function AskSlide({ n, total }: SlideProps) {
           <span className="relative inline-flex w-fit items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.14em] ring-1 ring-white/30">
             <Banknote className="size-3.5" /> Pre-seed
           </span>
-          <div className="relative mt-3 text-[64px] font-extrabold leading-none tracking-[-0.06em] @3xl:text-[96px]">$600K</div>
+          <div className="relative mt-3 text-[64px] font-extrabold leading-none tracking-[-0.06em] @3xl:text-[96px]">{fmtUsd(raise, locale)}</div>
           <div className="relative mt-2 text-[14px] font-bold text-white/85 @3xl:text-[16px]">{a.instrument}</div>
           <div className="relative mt-auto pt-5">
             <div className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-white/75">{a.milestones}</div>
@@ -836,9 +871,9 @@ export function AskSlide({ n, total }: SlideProps) {
         <Card className="flex flex-col justify-center">
           <div className="flex items-baseline justify-between">
             <span className="text-[13px] font-extrabold uppercase tracking-[0.14em] text-ink-3">{a.use}</span>
-            <span className="text-[20px] font-extrabold tracking-tight text-ink">$600K</span>
+            <span className="text-[20px] font-extrabold tracking-tight text-ink">{fmtUsd(raise, locale)}</span>
           </div>
-          <div className="mb-5 mt-1 text-[12px] font-semibold text-ink-3">{a.instrument}</div>
+          <div className="mb-5" />
           <FundsBars labels={a.funds} />
         </Card>
       </div>
@@ -859,6 +894,17 @@ export function ClosingSlide({ n, total }: SlideProps) {
           <Rich text={c.title} accentClassName="!bg-none !text-[#ffc285] ![-webkit-text-fill-color:#ffc285]" />
         </h2>
         <p className="mt-4 max-w-xl text-[15px] font-semibold text-white/80 @3xl:text-[19px]">{c.text}</p>
+        {site.founders[0] && (
+          <div className="mt-6 flex items-center gap-3">
+            <span className="grid size-11 shrink-0 place-items-center rounded-full bg-white/90 text-[14px] font-extrabold text-[#c2410c]">
+              {initialsOf(site.founders[0])}
+            </span>
+            <div className="leading-tight">
+              <div className="text-[16px] font-extrabold @3xl:text-[18px]">{site.founders[0]}</div>
+              <div className="text-[12px] font-bold text-white/75 @3xl:text-[13px]">{t.pitch.team.members[0].role} · Travely</div>
+            </div>
+          </div>
+        )}
         <div className="mt-8 flex flex-wrap gap-3">
           <a href={`mailto:${site.email}?subject=Travely%20pre-seed`} className="btn h-12 bg-white px-6 text-[14px] text-brand-ink shadow-lg">
             <CalendarCheck className="size-4" /> {c.cta}

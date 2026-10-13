@@ -10,7 +10,7 @@ This repository contains the marketing website, an interactive AI-planner demo a
 | --- | --- |
 | `/` | Landing page: hero with an AI prompt, real market numbers, features, live planner demo, destinations from 6 continents, Silk Road spotlight, app preview, pricing, FAQ and a waitlist form |
 | `/planner` | Interactive trip planner (12 cities, days, travel style, travelers, interests → day-by-day plan, route map and budget) |
-| `/pitch` | 18-slide investor deck: problem, solution, product, why now, market (TAM/SAM/SOM), business model, unit economics, progress, go-to-market, competition, moat, financials, roadmap, team, the ask, contact, sources |
+| `/pitch` | 18-slide investor deck: problem, solution, product, why now, market (TAM/SAM/SOM), business model, unit economics, progress, go-to-market, competition, moat, 12-month financial plan, 12-month roadmap, team, the ask ($10K pre-seed), contact, sources |
 
 **Design:** orange & white soft UI with liquid-glass surfaces and a day/night (light/dark) theme.
 **Languages (6):** Oʻzbekcha, English, Русский, Türkçe, Deutsch, 中文. The choice is stored in a cookie, so pages are rendered server-side in the right language with no flash.
@@ -53,7 +53,14 @@ npm run build      # production build
 
 Wrap a word in `*asterisks*` inside any headline to give it the orange serif accent.
 
-> **Before investor meetings:** fill in the founder names and contacts in `src/data/site.ts` (they are placeholders) and replace the "Progress" slide items with your real traction numbers.
+## The round
+
+- **Founder & CEO:** Dinara Maksudova
+- **Ask:** $10,000 pre-seed (SAFE) for a 12-month runway
+- **Use of funds:** product & AI 40% ($4,000) · marketing & growth 30% ($3,000) · local partners 15% ($1,500) · operations & legal 15% ($1,500)
+- **12-month plan** (`src/data/market.ts`): 25,000 registered users, 10,000 MAU, 600 bookings, $108K gross bookings, $10.8K revenue; revenue covers monthly costs from Q3 and cash never falls below $5.7K. Assumptions: $180 average booking, 10% net take rate, 1.5 bookings per booker, founder salary not included.
+
+> **Before investor meetings:** replace the placeholder email, Telegram and domain in `src/data/site.ts`, and update the "Progress" slide with your real numbers as they come in.
 
 ## Data sources (as of 2026)
 
@@ -76,4 +83,5 @@ Full links are in `src/data/market.ts` and on the last slide of the deck. Financ
 - **Ishga tushirish:** `npm install` → `npm run dev` → http://localhost:3000
 - **Vercel'ga joylash:** GitHub repozitoriyani Vercel'da *Import* qiling → *Deploy*. Hech qanday sozlama kerak emas.
 - **Pitch:** `/pitch` sahifasi. "PDF sifatida saqlash" tugmasi har bir slaydni alohida sahifa qilib chiqaradi.
-- **Matnlar:** `src/i18n/dictionaries/` papkasida 6 til. Asoschilar ismi va kontaktlar: `src/data/site.ts`.
+- **Matnlar:** `src/i18n/dictionaries/` papkasida 6 til. Asoschi (Dinara Maksudova) va kontaktlar: `src/data/site.ts`.
+- **Raund:** $10 000 pre-seed, 12 oylik reja: 25 000 foydalanuvchi, 600 bron, $108K bron hajmi, $10,8K daromad.
