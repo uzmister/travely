@@ -3,8 +3,8 @@
 import { useId, useState } from "react";
 import { motion } from "motion/react";
 import { useI18n } from "@/i18n/provider";
-import { fmtCompact, fmtNum, fmtPct } from "@/lib/format";
-import { uzVisitors, projections, useOfFunds, raise } from "@/data/market";
+import { fmtCompact, fmtNum, fmtPct, fmtUsd } from "@/lib/format";
+import { uzVisitors, plan12, useOfFunds, raise } from "@/data/market";
 
 const ease = [0.2, 0.7, 0.2, 1] as const;
 
@@ -70,46 +70,77 @@ export function VisitorsChart({ title, note }: { title: string; note: string }) 
   );
 }
 
-/** Revenue columns 2027–2030 (one series). GBV & the rest live in the table beside it. */
-export function RevenueChart({ label }: { label: string }) {
+/**
+ * Revenue vs costs per quarter (two series, one $ axis). Revenue carries the
+ * direct labels; costs read off the axis and the table beside the chart.
+ */
+export function RevenueCostChart({ title, revenueLabel, costsLabel }: { title: string; revenueLabel: string; costsLabel: string }) {
   const { locale } = useI18n();
-  const fmt = { format: (v: number) => fmtCompact(v, locale, true) };
-  const W = 420;
+  const money = (v: number) => fmtCompact(v, locale, true);
+  const W = 440;
   const H = 280;
-  const pad = { t: 30, b: 30, l: 8, r: 8 };
-  const max = 10;
-  const band = (W - pad.l - pad.r) / projections.length;
-  const barW = 24;
+  const pad = { t: 30, b: 30, l: 44, r: 8 };
+  const max = 7000;
+  const band = (W - pad.l - pad.r) / plan12.length;
+  const barW = 22;
+  const gap = 2;
   const y = (v: number) => pad.t + (H - pad.t - pad.b) * (1 - v / max);
+  const bar = (x: number, v: number) => {
+    const top = y(v);
+    const r = Math.min(4, (H - pad.b - top) / 2);
+    return `M ${x} ${H - pad.b} V ${top + r} Q ${x} ${top} ${x + r} ${top} H ${x + barW - r} Q ${x + barW} ${top} ${x + barW} ${top + r} V ${H - pad.b} Z`;
+  };
 
   return (
     <figure className="w-full">
-      <figcaption className="text-[13px] font-extrabold text-ink @3xl:text-[15px]">{label}</figcaption>
-      <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full overflow-visible" role="img" aria-label={label}>
-        {[0, 5, 10].map((g) => (
-          <line key={g} x1={pad.l} x2={W - pad.r} y1={y(g)} y2={y(g)} stroke="var(--line)" strokeWidth="1" />
+      <figcaption className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[13px] font-extrabold text-ink @3xl:text-[15px]">{title}</span>
+        <span className="flex items-center gap-3 text-[11.5px] font-bold text-ink-2 @3xl:text-[12.5px]">
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-[3px] bg-brand" /> {revenueLabel}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-[3px] bg-ink-3/45" /> {costsLabel}
+          </span>
+        </span>
+      </figcaption>
+      <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full overflow-visible" role="img" aria-label={title}>
+        {[0, 2000, 4000, 6000].map((g) => (
+          <g key={g}>
+            <line x1={pad.l} x2={W - pad.r} y1={y(g)} y2={y(g)} stroke="var(--line)" strokeWidth="1" />
+            <text x={pad.l - 8} y={y(g) + 4} textAnchor="end" className="fill-ink-3" fontSize="11" fontWeight="700">
+              {money(g)}
+            </text>
+          </g>
         ))}
-        {projections.map((d, i) => {
-          const cx = pad.l + band * i + band / 2;
-          const top = y(d.revenue);
-          const r = 4;
-          const path = `M ${cx - barW / 2} ${H - pad.b} V ${top + r} Q ${cx - barW / 2} ${top} ${cx - barW / 2 + r} ${top} H ${cx + barW / 2 - r} Q ${cx + barW / 2} ${top} ${cx + barW / 2} ${top + r} V ${H - pad.b} Z`;
+        {plan12.map((d, i) => {
+          const x0 = pad.l + band * i + band / 2 - barW - gap / 2;
+          const x1 = x0 + barW + gap;
           return (
-            <g key={d.year}>
-              <title>{`${d.year}: ${fmt.format(d.revenue * 1e6)}`}</title>
+            <g key={d.q}>
+              <title>{`${d.q}: ${revenueLabel} ${fmtUsd(d.revenue, locale)} · ${costsLabel} ${fmtUsd(d.costs, locale)}`}</title>
               <motion.path
-                d={path}
+                d={bar(x0, d.revenue)}
                 fill="var(--brand)"
                 initial={{ scaleY: 0 }}
                 animate={{ scaleY: 1 }}
                 style={{ originY: 1, transformBox: "fill-box" }}
                 transition={{ duration: 0.9, delay: 0.15 + i * 0.1, ease }}
               />
-              <text x={cx} y={top - 9} textAnchor="middle" className="fill-ink" fontSize="15" fontWeight="800">
-                {fmt.format(d.revenue * 1e6)}
+              <motion.path
+                d={bar(x1, d.costs)}
+                fill="var(--ink-3)"
+                fillOpacity={0.45}
+                initial={{ scaleY: 0 }}
+                animate={{ scaleY: 1 }}
+                style={{ originY: 1, transformBox: "fill-box" }}
+                transition={{ duration: 0.9, delay: 0.2 + i * 0.1, ease }}
+              />
+              <text x={x0 + barW / 2} y={y(d.revenue) - 8} textAnchor="middle" className="fill-ink" fontSize="13" fontWeight="800">
+                {money(d.revenue)}
               </text>
-              <text x={cx} y={H - 8} textAnchor="middle" className="fill-ink-3" fontSize="12" fontWeight="700">
-                {d.year}
+              <text x={pad.l + band * i + band / 2} y={H - 8} textAnchor="middle" className="fill-ink-3" fontSize="12" fontWeight="700">
+                {d.q}
               </text>
             </g>
           );
@@ -123,7 +154,7 @@ export function RevenueChart({ label }: { label: string }) {
 /** Use of funds as horizontal bars (magnitude, one hue), value at the tip. */
 export function FundsBars({ labels }: { labels: string[] }) {
   const { locale } = useI18n();
-  const money = { format: (v: number) => fmtCompact(v, locale, true) };
+  const money = { format: (v: number) => fmtUsd(v, locale) };
   const pct = { format: (v: number) => fmtPct(v * 100, locale) };
   return (
     <ul className="space-y-4 @3xl:space-y-6">

@@ -136,13 +136,43 @@ export const headline = {
   bookingGross2025: 186, // billion USD
 };
 
-/** Management projections used in the pitch deck. */
-export const projections = [
-  { year: 2027, mau: 0.15, bookers: 4.5, gbv: 2.3, revenue: 0.25, ebitda: -0.45 },
-  { year: 2028, mau: 0.6, bookers: 24, gbv: 12.1, revenue: 1.33, ebitda: -1.6 },
-  { year: 2029, mau: 1.5, bookers: 75, gbv: 37.8, revenue: 4.16, ebitda: -0.8 },
-  { year: 2030, mau: 3.0, bookers: 165, gbv: 83.2, revenue: 9.15, ebitda: 1.2 },
-];
+/**
+ * 12-month plan for the $10K pre-seed round (management estimates).
+ * Assumptions: $180 average booking, 10% net take rate, 1.5 bookings per booker,
+ * founder salary not included. Users and MAU are end-of-quarter values.
+ */
+export const avgBooking = 180;
+export const takeRate = 0.1;
 
+export const plan12 = [
+  { q: "Q1", months: "1–3", users: 1_500, mau: 800, bookings: 10, costs: 3_000 },
+  { q: "Q2", months: "4–6", users: 5_000, mau: 2_500, bookings: 60, costs: 2_500 },
+  { q: "Q3", months: "7–9", users: 12_000, mau: 6_000, bookings: 180, costs: 2_300 },
+  { q: "Q4", months: "10–12", users: 25_000, mau: 10_000, bookings: 350, costs: 2_200 },
+].map((p) => {
+  const gbv = p.bookings * avgBooking;
+  const revenue = gbv * takeRate;
+  return { ...p, gbv, revenue, net: revenue - p.costs };
+});
+
+export const plan12Total = {
+  users: plan12[plan12.length - 1].users,
+  mau: plan12[plan12.length - 1].mau,
+  bookings: plan12.reduce((a, p) => a + p.bookings, 0),
+  gbv: plan12.reduce((a, p) => a + p.gbv, 0),
+  revenue: plan12.reduce((a, p) => a + p.revenue, 0),
+  costs: plan12.reduce((a, p) => a + p.costs, 0),
+  net: plan12.reduce((a, p) => a + p.net, 0),
+};
+
+/** Unit economics targets for year one. */
+export const unit = {
+  commission: avgBooking * takeRate, // $18
+  bookingsPerBooker: 1.5,
+  ltv: avgBooking * takeRate * 1.5, // $27
+  cac: 7.5, // $3,000 marketing ÷ 400 bookers
+};
+
+export const raise = 10_000;
+/** Use of funds, % of the round: product & AI, marketing, local partners, operations & legal. */
 export const useOfFunds = [40, 30, 15, 15];
-export const raise = 600_000;
